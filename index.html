@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NIKK XO — Prediction Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #07070b; --bg-alt: #0a0a10; --card: #0f0f17; --card-hover: #14141e;
+            --surface: rgba(255,255,255,0.025); --border: rgba(255,255,255,0.05);
+            --border-light: rgba(255,255,255,0.08); --gold: #f0b429;
+            --gold-dim: rgba(240,180,41,0.12); --gold-glow: rgba(240,180,41,0.25);
+            --pink: #ff00f7; --cyan: #00f0ff; --green: #10b981; --red: #ef4444;
+            --text: #f2f0eb; --text-secondary: #a0a0a8; --text-dim: #5c5c66;
+            --radius: 14px; --radius-sm: 9px; --radius-lg: 20px; --nav-h: 62px; --top-h: 50px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }
+        ::selection { background: var(--gold-dim); color: var(--gold); }
+        html, body { height: 100%; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+        #bgCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+        .bg-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden; }
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+        .bg-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(240,180,41,0.08), transparent 70%); top: -10%; left: -10%; animation: orb1 25s ease-in-out infinite alternate; }
+        .bg-orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(120,50,255,0.06), transparent 70%); bottom: -15%; right: -10%; animation: orb2 30s ease-in-out infinite alternate; }
+        .bg-orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(0,200,255,0.05), transparent 70%); top: 50%; left: 50%; transform: translate(-50%,-50%); animation: orb3 20s ease-in-out infinite alternate; }
+        @keyframes orb1 { 0%{transform:translate(0,0)scale(1)} 50%{transform:translate(80px,60px)scale(1.15)} 100%{transform:translate(-40px,100px)scale(.95)} }
+        @keyframes orb2 { 0%{transform:translate(0,0)scale(1)} 50%{transform:translate(-60px,-80px)scale(1.1)} 100%{transform:translate(40px,-40px)scale(.9)} }
+        @keyframes orb3 { 0%{transform:translate(-50%,-50%)scale(1)} 50%{transform:translate(-45%,-55%)scale(1.2)} 100%{transform:translate(-55%,-45%)scale(.85)} }
+        .bg-grid { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.015)1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015)1px,transparent 1px); background-size: 60px 60px; }
+        .bg-noise { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; opacity: .35; mix-blend-mode: overlay; }
+        .bg-noise::after { content: ''; position: absolute; inset: -50%; width: 200%; height: 200%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: noise 8s steps(4) infinite; }
+        @keyframes noise { 0%{transform:translate(0,0)} 25%{transform:translate(-5%,-5%)} 50%{transform:translate(-10%,5%)} 75%{transform:translate(5%,-10%)} 100%{transform:translate(0,0)} }
+        .app-shell { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100vh; }
+        .top-bar { height: var(--top-h); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; flex-shrink: 0; background: rgba(7,7,11,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        .top-logo { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 900; letter-spacing: 2px; background: linear-gradient(135deg,var(--gold),#f59e0b,var(--gold)); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .top-right { display: flex; align-items: center; gap: 10px; }
+        .top-balance { display: flex; align-items: center; gap: 6px; background: var(--gold-dim); border: 1px solid rgba(240,180,41,0.15); border-radius: 20px; padding: 4px 14px 4px 10px; font-size: .78rem; font-weight: 600; color: var(--gold); cursor: pointer; transition: all .3s; height: 30px; }
+        .top-balance:hover { background: rgba(240,180,41,0.18); border-color: rgba(240,180,41,0.25); }
+        .top-balance .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: var(--gold); box-shadow: 0 0 8px var(--gold-glow); }
+        .top-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,var(--gold),#f59e0b); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .7rem; cursor: pointer; transition: all .3s; flex-shrink: 0; border: none; color: #0a0a0e; position: relative; }
+        .profile-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9998; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); }
+        .profile-overlay.show { display: block; }
+        .profile-panel { display: none; position: fixed; top: 60px; right: 12px; width: 280px; max-width: calc(100vw - 24px); background: #13131c; border: 1px solid rgba(240,180,41,0.25); border-radius: 14px; z-index: 9999; box-shadow: 0 24px 80px rgba(0,0,0,0.7); animation: panelIn .18s cubic-bezier(.22,1,.36,1); }
+        .profile-panel.show { display: block; }
+        @keyframes panelIn { from{opacity:0;transform:translateY(-8px)scale(.95)} to{opacity:1;transform:translateY(0)scale(1)} }
+        .profile-panel .pp-head { display: flex; align-items: center; gap: 12px; padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .profile-panel .pp-av { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#f0b429,#d97706); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .95rem; color: #0a0a0e; flex-shrink: 0; }
+        .profile-panel .pp-info { flex: 1; min-width: 0; }
+        .profile-panel .pp-name { font-size: .95rem; font-weight: 700; color: #f0ede6; }
+        .profile-panel .pp-phone { font-size: .72rem; color: #888898; margin-top: 2px; }
+        .profile-panel .pp-ref { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: .72rem; color: #888898; display: flex; align-items: center; gap: 6px; background: rgba(240,180,41,0.05); }
+        .profile-panel .pp-ref strong { color: #f0b429; font-weight: 700; }
+        .profile-panel .pp-stats { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .profile-panel .pp-stat { padding: 14px 16px; text-align: center; }
+        .profile-panel .pp-stat+.pp-stat { border-left: 1px solid rgba(255,255,255,0.07); }
+        .profile-panel .pp-stat .pp-sval { font-size: 1.05rem; font-weight: 800; color: #f0ede6; }
+        .profile-panel .pp-stat .pp-slbl { font-size: .62rem; color: #888898; text-transform: uppercase; letter-spacing: .6px; margin-top: 3px; }
+        .profile-panel .pp-txns { padding: 12px 16px 8px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .profile-panel .pp-txns .pp-th { font-size: .62rem; color: #888898; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+        .profile-panel .pp-txns .pp-ti { display: flex; justify-content: space-between; font-size: .75rem; padding: 5px 0; color: #c8c5c0; }
+        .profile-panel .pp-txns .pp-ti .pp-ta.plus { color: #34d399; font-weight: 600; }
+        .profile-panel .pp-txns .pp-ti .pp-ta.minus { color: #f87171; font-weight: 600; }
+        .profile-panel .pp-txns .pp-more { font-size: .68rem; color: #f0b429; text-align: center; padding: 8px 0 2px; cursor: pointer; font-weight: 700; letter-spacing: .3px; }
+        .profile-panel .pp-txns .pp-more:hover { opacity: .75; }
+        .profile-panel .pp-foot { padding: 12px 16px; }
+        .profile-panel .pp-foot button { width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: .8rem; transition: all .2s; font-family: 'Inter', sans-serif; background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.18); }
+        .profile-panel .pp-foot button:hover { background: rgba(239,68,68,0.22); }
+        .page-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 14px 16px calc(var(--nav-h) + 20px); scroll-behavior: smooth; }
+        .page { display: none; animation: pageIn .4s cubic-bezier(.22,1,.36,1); }
+        .page.active { display: block; }
+        @keyframes pageIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: rgba(7,7,11,0.92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom,0); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; background: none; color: var(--text-dim); cursor: pointer; transition: all .3s; position: relative; padding: 4px 0; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
+        .nav-item svg { width: 20px; height: 20px; transition: all .35s; }
+        .nav-item span { font-size: .6rem; font-weight: 500; letter-spacing: .5px; text-transform: uppercase; transition: all .3s; }
+        .nav-item::after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 0; height: 2px; background: var(--gold); border-radius: 0 0 2px 2px; transition: width .35s cubic-bezier(.22,1,.36,1); box-shadow: 0 0 10px var(--gold-glow); }
+        .nav-item.active::after { width: 28px; }
+        .nav-item.active { color: var(--text); } .nav-item.active svg { filter: drop-shadow(0 0 6px var(--gold-glow)); }
+        .nav-item:nth-child(1).active svg,.nav-item:nth-child(1).active span { color: var(--gold); }
+        .nav-item:nth-child(2).active svg,.nav-item:nth-child(2).active span { color: var(--gold); }
+        .nav-item:nth-child(3).active svg,.nav-item:nth-child(3).active span { color: var(--gold); }
+        .hero { text-align: center; padding: 36px 20px 20px; }
+        .hero-logo { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 900; letter-spacing: 3px; background: linear-gradient(135deg,var(--gold) 0%,#f59e0b 50%,var(--gold) 100%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: logoShine 4s linear infinite; display: inline-block; position: relative; }
+        @keyframes logoShine { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .hero-logo::after { content: ''; position: absolute; inset: -12px -40px; background: radial-gradient(ellipse at center,var(--gold-dim),transparent 70%); z-index: -1; animation: logoGlow 3s ease-in-out infinite alternate; }
+        @keyframes logoGlow { from{opacity:.3;transform:scale(.95)} to{opacity:.8;transform:scale(1.05)} }
+        .hero-tagline { color: var(--text-secondary); font-size: .85rem; margin-top: 6px; letter-spacing: 4px; text-transform: uppercase; font-weight: 500; }
+        .hero-sub { color: var(--text-dim); font-size: .75rem; margin-top: 2px; }
+        .hero-cta { margin-top: 22px; display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(135deg,var(--gold),#f59e0b); color: #0a0a0e; border: none; padding: 14px 32px; border-radius: 60px; font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .3s; box-shadow: 0 6px 30px var(--gold-glow); font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
+        .hero-cta::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%); animation: shine 3s ease-in-out infinite; }
+        @keyframes shine { 0%{transform:translateX(-100%)rotate(45deg)} 100%{transform:translateX(100%)rotate(45deg)} }
+        .hero-cta:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 10px 45px var(--gold-glow); }
+        .hero-cta:active { transform: scale(.97); }
+        .hero-mini-board { display: inline-grid; grid-template-columns: repeat(3,26px); gap: 3px; vertical-align: middle; }
+        .hero-mini-board span { aspect-ratio: 1; background: rgba(0,0,0,0.2); border: 1px solid rgba(240,180,41,0.15); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: .5rem; font-weight: 800; }
+        .hero-mini-board span.xc { color: var(--pink); } .hero-mini-board span.oc { color: var(--cyan); }
+        .support-fab { position: fixed; bottom: calc(var(--nav-h) + 16px); right: 16px; width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg,var(--gold),#f59e0b); border: none; cursor: pointer; box-shadow: 0 6px 25px var(--gold-glow); z-index: 99; transition: all .3s; display: flex; align-items: center; justify-content: center; color: #0a0a0e; }
+        .support-fab:hover { transform: scale(1.12); box-shadow: 0 10px 40px var(--gold-glow); }
+        .support-fab:active { transform: scale(.9); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border .3s,transform .2s,box-shadow .3s; box-shadow: var(--shadow); }
+        .card:hover { border-color: var(--border-light); }
+        .card-highlight { border-color: var(--gold-dim); background: linear-gradient(180deg,rgba(240,180,41,0.03),transparent); }
+        .card-highlight:hover { border-color: rgba(240,180,41,0.15); }
+        .section-title { font-size: .65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); font-weight: 600; margin-bottom: 12px; }
+        .section-title span { color: var(--gold); }
+        .auth-wrap { max-width: 380px; margin: 0 auto 24px; }
+        .auth-tabs { display: flex; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 18px; border: 1px solid var(--border); }
+        .auth-tab { flex: 1; padding: 10px; text-align: center; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: .82rem; color: var(--text-dim); transition: all .3s; border: none; background: none; font-family: 'Inter', sans-serif; }
+        .auth-tab.active { background: linear-gradient(135deg,var(--gold),#f59e0b); color: #0a0a0e; box-shadow: 0 4px 15px var(--gold-glow); }
+        .auth-tab:not(.active):hover { color: var(--text-secondary); }
+        .auth-panel { display: none; } .auth-panel.active { display: block; }
+        .auth-form { display: flex; flex-direction: column; gap: 14px; }
+        .fg { display: flex; flex-direction: column; gap: 4px; }
+        .fg label { font-size: .75rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+        .fg input { padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: .92rem; outline: none; transition: border .3s,box-shadow .3s; font-family: 'Inter', sans-serif; }
+        .fg input:focus { border-color: var(--gold); box-shadow: 0 0 20px var(--gold-dim); }
+        .fg .err { color: var(--red); font-size: .75rem; display: none; }
+        .loading { display: none; text-align: center; }
+        .spinner { width: 22px; height: 22px; border: 2.5px solid rgba(255,255,255,0.05); border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; margin: 0 auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-primary { background: linear-gradient(135deg,var(--gold),#f59e0b); color: #0a0a0e; border: none; padding: 13px; border-radius: var(--radius-sm); cursor: pointer; font-size: .9rem; font-weight: 700; transition: all .3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
+        .btn-primary::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg,transparent 35%,rgba(255,255,255,0.12) 50%,transparent 65%); animation: shine 4s ease-in-out infinite; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 25px var(--gold-glow); }
+        .btn-primary:active { transform: scale(.97); }
+        .btn-secondary { background: linear-gradient(135deg,rgba(240,180,41,0.1),rgba(240,180,41,0.05)); color: var(--gold); border: 1px solid var(--gold-dim); padding: 12px 18px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: .82rem; transition: all .3s; display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif; }
+        .btn-secondary:hover { background: rgba(240,180,41,0.15); transform: translateY(-2px); box-shadow: 0 6px 20px var(--gold-dim); }
+        .btn-secondary:active { transform: scale(.97); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: .78rem; transition: all .3s; font-family: 'Inter', sans-serif; }
+        .btn-ghost:hover { border-color: var(--border-light); color: var(--text); background: var(--surface); }
+        .btn-out { background: rgba(239,68,68,0.08); color: var(--red); border: 1px solid rgba(239,68,68,0.15); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: .75rem; transition: all .3s; font-family: 'Inter', sans-serif; }
+        .btn-out:hover { background: rgba(239,68,68,0.12); }
+        .btn-close { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 500; transition: all .3s; margin-top: 10px; font-family: 'Inter', sans-serif; }
+        .btn-close:hover { background: rgba(255,255,255,0.04); }
+        .pred-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+        .pred-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 8px; text-align: center; box-shadow: var(--shadow); }
+        .pred-stat .val { font-size: 1.15rem; font-weight: 800; color: var(--text); }
+        .pred-stat .lbl { font-size: .58rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; margin-top: 3px; font-weight: 500; }
+        .bets-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 4px; }
+        .bet-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 10px; text-align: center; cursor: pointer; transition: all .35s cubic-bezier(.22,1,.36,1); position: relative; overflow: hidden; box-shadow: var(--shadow); }
+        .bet-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg,transparent,rgba(240,180,41,0.04),transparent); transition: left .6s; }
+        .bet-card:hover::before { left: 100%; }
+        .bet-card:hover { transform: translateY(-5px); border-color: var(--gold-dim); box-shadow: 0 12px 40px rgba(0,0,0,0.4),0 0 30px var(--gold-dim); }
+        .bet-card:active { transform: scale(.96); }
+        .bet-card .b-amt { font-size: 1.15rem; font-weight: 800; color: var(--gold); }
+        .bet-card .p-amt { font-size: .9rem; color: var(--green); font-weight: 600; margin-top: 2px; }
+        .bet-card .b-label { font-size: .65rem; color: var(--text-dim); margin-top: 6px; font-weight: 500; }
+        .bet-card.demo-bet { border-color: rgba(240,180,41,0.08); background: linear-gradient(180deg,rgba(240,180,41,0.04),transparent); }
+        .bet-card.demo-bet .b-amt { color: var(--text-secondary); }
+        @media(max-width:440px){ .bets-grid{grid-template-columns:1fr 1fr} .wallet-cards{grid-template-columns:1fr} .wallet-actions{grid-template-columns:1fr} }
+        .game-area { margin-bottom: 16px; }
+        .game-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: .77rem; color: var(--text-secondary); margin-bottom: 16px; box-shadow: var(--shadow); }
+        .game-bar .g-bet { color: var(--gold); font-weight: 700; }
+        .game-bar .g-win { color: var(--green); font-weight: 700; }
+        .game-bar .g-xo { color: var(--pink); font-weight: 700; }
+        .game-board { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; max-width: 290px; margin: 0 auto; }
+        .g-cell { aspect-ratio: 1; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; cursor: pointer; transition: all .25s cubic-bezier(.22,1,.36,1); user-select: none; box-shadow: var(--shadow); }
+        .g-cell:not(.dis):hover { background: var(--card-hover); border-color: var(--gold-dim); transform: scale(1.03); box-shadow: 0 0 20px var(--gold-dim); }
+        .g-cell:not(.dis):active { transform: scale(.93); }
+        .g-cell.x { color: var(--pink); text-shadow: 0 0 30px rgba(255,0,247,0.3); }
+        .g-cell.o { color: var(--cyan); text-shadow: 0 0 30px rgba(0,240,255,0.3); }
+        .g-cell.dis { pointer-events: none; opacity: .45; }
+        .g-cell.win { background: linear-gradient(135deg,rgba(240,180,41,0.12),rgba(240,180,41,0.04)); border-color: var(--gold); box-shadow: 0 0 30px var(--gold-glow),inset 0 0 20px var(--gold-dim); animation: gwPulse .8s ease-in-out infinite alternate; }
+        @keyframes gwPulse { from{box-shadow:0 0 15px var(--gold-dim),inset 0 0 10px var(--gold-dim)} to{box-shadow:0 0 45px var(--gold-glow),inset 0 0 25px var(--gold-dim)} }
+        .g-result { text-align: center; font-size: 1rem; min-height: 44px; margin: 14px 0; font-weight: 600; line-height: 1.5; }
+        .g-result a { color: var(--gold); text-decoration: none; font-weight: 700; }
+        .g-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .g-actions button { padding: 10px 24px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: .8rem; transition: all .3s; font-family: 'Inter', sans-serif; }
+        .g-actions .g-back { background: rgba(255,255,255,0.04); color: var(--text-secondary); border: 1px solid var(--border); }
+        .g-actions .g-back:hover { background: rgba(255,255,255,0.06); }
+        .g-actions .g-again { background: linear-gradient(135deg,var(--gold),#f59e0b); color: #0a0a0e; font-weight: 700; box-shadow: 0 4px 15px var(--gold-glow); }
+        .g-actions .g-again:hover { transform: translateY(-2px); box-shadow: 0 6px 25px var(--gold-glow); }
+        .opp-find { text-align: center; font-size: .85rem; margin: 14px 0; display: none; color: var(--gold); animation: oppPulse 1.2s ease-in-out infinite; font-weight: 500; }
+        @keyframes oppPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+        .opp-find .dots::after { content: ''; animation: dotAnim 1.5s steps(4,end) infinite; }
+        @keyframes dotAnim { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
+        .demo-wrap { margin-bottom: 16px; text-align: center; }
+        .demo-wrap .demo-h { font-size: .9rem; font-weight: 700; background: linear-gradient(135deg,var(--gold),#f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .demo-wrap > p { font-size: .75rem; color: var(--text-dim); }
+        .demo-board { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; max-width: 220px; margin: 12px auto; }
+        .d-cell { aspect-ratio: 1; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.9rem; font-weight: 800; cursor: pointer; transition: all .2s; user-select: none; box-shadow: var(--shadow); }
+        .d-cell:not(.dis):hover { background: var(--card-hover); border-color: var(--gold-dim); transform: scale(1.04); }
+        .d-cell.x { color: var(--pink); text-shadow: 0 0 20px rgba(255,0,247,0.3); }
+        .d-cell.o { color: var(--cyan); text-shadow: 0 0 20px rgba(0,240,255,0.3); }
+        .d-cell.dis { pointer-events: none; opacity: .5; }
+        .d-result { font-size: .9rem; min-height: 36px; margin: 10px 0; color: var(--gold); font-weight: 600; }
+        .d-actions { display: flex; gap: 10px; justify-content: center; }
+        .wallet-big { text-align: center; padding: 26px 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
+        .wallet-big::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at center,var(--gold-dim),transparent 60%); animation: walGlow 5s ease-in-out infinite alternate; }
+        @keyframes walGlow { from{transform:translate(-5%,-5%)} to{transform:translate(5%,5%)} }
+        .wallet-big > * { position: relative; z-index: 1; }
+        .wallet-big .wal-label { font-size: .68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; }
+        .wallet-big .wal-amt { font-size: 2.6rem; font-weight: 900; background: linear-gradient(135deg,var(--gold),#f59e0b,var(--gold)); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 4px 0; animation: logoShine 4s linear infinite; }
+        .wallet-big .wal-sub { font-size: .72rem; color: var(--text-dim); }
+        .wallet-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .wal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; text-align: center; transition: border .3s,transform .2s; box-shadow: var(--shadow); }
+        .wal-card .w-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: .95rem; }
+        .wal-card .w-icon.dep { background: rgba(240,180,41,0.12); color: var(--gold); }
+        .wal-card .w-icon.win { background: rgba(16,185,129,0.12); color: var(--green); }
+        .wal-card h4 { font-size: .65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; font-weight: 500; }
+        .wal-card .w-amt { font-size: 1.35rem; font-weight: 800; margin: 4px 0; }
+        .wal-card:nth-child(1) .w-amt { color: var(--gold); }
+        .wal-card:nth-child(2) .w-amt { color: var(--green); }
+        .wal-card p { font-size: .68rem; color: var(--text-dim); margin: 2px 0 10px; }
+        .wallet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .txn-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .txn-stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; text-align: center; box-shadow: var(--shadow); }
+        .txn-stat .ts-val { font-size: 1.15rem; font-weight: 800; }
+        .txn-stat .ts-lbl { font-size: .58rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; margin-top: 3px; font-weight: 500; }
+        .txn-stat.credit .ts-val { color: var(--green); }
+        .txn-stat.debit .ts-val { color: var(--red); }
+        .txn-list { display: flex; flex-direction: column; gap: 6px; }
+        .txn-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface); border-radius: var(--radius-sm); font-size: .75rem; border-left: 3px solid transparent; transition: background .2s; }
+        .txn-item.credit { border-left-color: var(--green); }
+        .txn-item.debit { border-left-color: var(--red); }
+        .txn-item .txn-info { flex: 1; min-width: 0; }
+        .txn-item .txn-note { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .txn-item .txn-date { font-size: .62rem; opacity: .35; margin-top: 2px; }
+        .txn-item .txn-amt { font-weight: 700; font-size: .85rem; white-space: nowrap; margin-left: 12px; }
+        .txn-item .txn-amt.plus { color: var(--green); }
+        .txn-item .txn-amt.minus { color: var(--red); }
+        .txn-empty { text-align: center; padding: 30px 20px; color: var(--text-dim); font-size: .82rem; }
+        .txn-empty svg { display: block; margin: 0 auto 12px; opacity: .2; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000; justify-content: center; align-items: center; padding: 16px; }
+        .modal.show { display: flex; }
+        .modal-in { background: var(--card); border: 1px solid var(--gold-dim); border-radius: var(--radius-lg); padding: 24px; width: 370px; max-width: 100%; max-height: 90vh; overflow-y: auto; animation: mIn .35s cubic-bezier(.22,1,.36,1); box-shadow: var(--shadow-lg); }
+        @keyframes mIn { from{opacity:0;transform:translateY(30px)scale(.95)} to{opacity:1;transform:translateY(0)scale(1)} }
+        .modal-in h3 { text-align: center; color: var(--gold); font-size: 1.05rem; margin-bottom: 12px; font-weight: 700; }
+        .modal-in .m-desc { text-align: center; font-size: .8rem; color: var(--text-dim); margin-bottom: 12px; }
+        .upii { background: rgba(255,255,255,0.02); padding: 12px; border-radius: var(--radius-sm); font-size: .78rem; margin-bottom: 14px; }
+        .upii strong { color: var(--gold); }
+        .upii ol { padding-left: 18px; margin: 6px 0; }
+        .upii li { margin-bottom: 4px; color: var(--text-secondary); }
+        .dopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .dopt { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; cursor: pointer; text-align: center; font-weight: 700; font-size: 1rem; color: var(--gold); transition: all .3s; box-shadow: var(--shadow); }
+        .dopt:hover { background: var(--gold-dim); border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 25px var(--gold-dim); }
+        .dopt:active { transform: scale(.96); }
+        .ref-form { display: none; flex-direction: column; gap: 10px; margin-top: 6px; }
+        .ref-form input { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: .92rem; outline: none; font-family: 'Inter', sans-serif; }
+        .ref-form input:focus { border-color: var(--gold); }
+        .toast-box { position: fixed; top: 14px; right: 14px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { background: rgba(15,15,23,0.95); backdrop-filter: blur(14px); border: 1px solid var(--border); padding: 11px 16px; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 500; box-shadow: var(--shadow); animation: tIn .35s cubic-bezier(.22,1,.36,1); max-width: 300px; pointer-events: auto; font-family: 'Inter', sans-serif; }
+        .toast.succ { border-color: var(--gold); }
+        .toast.err { border-color: var(--red); }
+        .toast.info { border-color: var(--gold-dim); }
+        @keyframes tIn { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
+        .confetti-bit { position: fixed; width: 8px; height: 8px; border-radius: 2px; animation: cFall var(--d) linear forwards; z-index: 9998; pointer-events: none; }
+        @keyframes cFall { 0%{opacity:1;transform:translateY(0)rotate(0deg)scale(1)} 100%{opacity:0;transform:translateY(100vh)rotate(720deg)scale(.3)} }
+        .win-flash { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9997; pointer-events: none; background: radial-gradient(ellipse at center,rgba(240,180,41,0.08),transparent 70%); animation: flashOut .8s ease-out forwards; }
+        @keyframes flashOut { 0%{opacity:1} 100%{opacity:0} }
+        .page-container::-webkit-scrollbar { width: 3px; }
+        .page-container::-webkit-scrollbar-track { background: transparent; }
+        .page-container::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }</style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <div class="bg-layer"><div class="bg-orb bg-orb-1"></div><div class="bg-orb bg-orb-2"></div><div class="bg-orb bg-orb-3"></div></div>
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+    <div class="toast-box" id="toastBox"></div>
+
+    <button class="support-fab" onclick="window.open('https://t.me/dreams_404','_blank')" title="Support">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg>
+    </button>
+
+    <div class="app-shell" id="appShell">
+        <!-- TOP BAR -->
+        <div class="top-bar" id="topBar" style="display:none;">
+            <div class="top-logo">✧ NIKK XO ✧</div>
+            <div class="top-right">
+                <div class="top-balance" onclick="switchTab('wallet')" title="Total Balance">
+                    <span class="dot gold"></span>
+                    ₹<span id="topBalance">0</span>
+                </div>
+                <div class="top-avatar" id="topAvatar" onclick="toggleProfile()">
+                    <span id="avatarLetter">U</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- AUTH (shown when logged out) -->
+        <div class="page-container" id="authContainer" style="display:flex;flex-direction:column;justify-content:center;">
+            <div class="hero">
+                <div class="hero-logo">✧ NIKK XO ✧</div>
+                <div class="hero-tagline">Bet. Play. Win.</div>
+                <div class="hero-sub">Tic Tac Toe — Real Money Challenge</div>
+                <button class="hero-cta" onclick="showDemoGame()">
+                    🎮 Free Demo
+                    <span class="hero-mini-board">
+                        <span class="xc">X</span><span></span><span class="oc">O</span>
+                        <span></span><span class="xc">X</span><span></span>
+                        <span class="oc">O</span><span></span><span class="xc">X</span>
+                    </span>
+                </button>
+            </div>
+
+            <div class="card auth-wrap" id="authWrap">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">Login</button>
+                    <button class="auth-tab" data-tab="register">Register</button>
+                </div>
+                <!-- Login panel -->
+                <div class="auth-panel active" id="panelLogin">
+                    <div class="auth-form">
+                        <div class="fg">
+                            <label>Phone</label>
+                            <input type="tel" id="inpPhone" placeholder="10-digit number" maxlength="10">
+                            <div class="err" id="errPhone">Enter a valid 10-digit number</div>
+                        </div>
+                        <div class="fg">
+                            <label>Password</label>
+                            <input type="password" id="inpPass" placeholder="Your password">
+                            <div class="err" id="errPass">Enter your password</div>
+                        </div>
+                        <div class="loading" id="loadLogin"><div class="spinner"></div></div>
+                        <button class="btn-primary" onclick="login()">Login</button>
+                    </div>
+                </div>
+                <!-- Register panel -->
+                <div class="auth-panel" id="panelRegister">
+                    <div class="auth-form">
+                        <div class="fg">
+                            <label>Phone</label>
+                            <input type="tel" id="inpRegPhone" placeholder="10-digit number" maxlength="10">
+                            <div class="err" id="errRegPhone">Enter a valid 10-digit number</div>
+                        </div>
+                        <div class="fg">
+                            <label>Full Name</label>
+                            <input type="text" id="inpRegName" placeholder="Your full name">
+                            <div class="err" id="errRegName">Enter your name</div>
+                        </div>
+                        <div class="fg">
+                            <label>Password</label>
+                            <input type="password" id="inpRegPass" placeholder="Create password (4+ chars)">
+                            <div class="err" id="errRegPass">Enter a valid password</div>
+                        </div>
+                        <div class="fg">
+                            <label>Confirm Password</label>
+                            <input type="password" id="inpRegConfirm" placeholder="Confirm password">
+                            <div class="err" id="errRegConfirm">Passwords don't match</div>
+                        </div>
+                        <div class="fg">
+                            <label>Referral <span style="color:#555;font-weight:400;">(optional)</span></label>
+                            <input type="text" id="inpReferral" placeholder="Referral code">
+                        </div>
+                        <div class="loading" id="loadReg"><div class="spinner"></div></div>
+                        <button class="btn-primary" onclick="register()">Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEMO (fullscreen when active) -->
+        <div class="page-container" id="demoContainer" style="display:none;">
+            <div class="card demo-wrap">
+                <div class="demo-h">🎯 Free Practice</div>
+                <p>No money needed — just skill</p>
+                <div class="opp-find" id="demoOppFind">Finding opponent<span class="dots"></span></div>
+                <div class="demo-board" id="demoBoard">
+                    <div class="d-cell" data-i="0"></div>
+                    <div class="d-cell" data-i="1"></div>
+                    <div class="d-cell" data-i="2"></div>
+                    <div class="d-cell" data-i="3"></div>
+                    <div class="d-cell" data-i="4"></div>
+                    <div class="d-cell" data-i="5"></div>
+                    <div class="d-cell" data-i="6"></div>
+                    <div class="d-cell" data-i="7"></div>
+                    <div class="d-cell" data-i="8"></div>
+                </div>
+                <div class="d-result" id="demoRes"></div>
+                <div class="d-actions">
+                    <button class="g-back" onclick="hideDemo()">← Back</button>
+                    <button class="g-back" onclick="resetDemo()">↻ Again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGGED-IN PAGES -->
+        <div class="page-container" id="appContainer" style="display:none;">
+            <!-- PAGE: Prediction -->
+            <div class="page active" id="pagePrediction">
+                <div class="pred-stats" id="predStats">
+                    <div class="pred-stat"><div class="val" id="psGames">0</div><div class="lbl">Games</div></div>
+                    <div class="pred-stat"><div class="val" id="psWins">0</div><div class="lbl">Wins</div></div>
+                    <div class="pred-stat"><div class="val" id="psStreak">0</div><div class="lbl">Streak</div></div>
+                </div>
+
+                <!-- Bets -->
+                <div class="card card-highlight" id="bets" style="margin-bottom:16px;">
+                    <div class="section-title">⚡ <span>Choose</span> Your Stake</div>
+                    <p style="font-size:.75rem;color:#555;margin-bottom:10px;margin-top:-6px;">Higher bet = higher multiplier</p>
+                    <div class="bets-grid">
+                        <div class="bet-card" onclick="placeBet(10,30)">
+                            <div class="b-amt">₹10</div>
+                            <div class="p-amt">Win ₹30</div>
+                            <div class="b-label">3× Return</div>
+                        </div>
+                        <div class="bet-card" onclick="placeBet(50,160)">
+                            <div class="b-amt">₹50</div>
+                            <div class="p-amt">Win ₹160</div>
+                            <div class="b-label">3.2× Return</div>
+                        </div>
+                        <div class="bet-card" onclick="placeBet(100,350)">
+                            <div class="b-amt">₹100</div>
+                            <div class="p-amt">Win ₹350</div>
+                            <div class="b-label">3.5× Return</div>
+                        </div>
+                        <div class="bet-card demo-bet" onclick="showDemoGame()">
+                            <div class="b-amt">🎮 Free</div>
+                            <div class="p-amt">Practice Mode</div>
+                            <div class="b-label">No money</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game -->
+                <div class="card game-area" id="gameArea" style="display:none;">
+                    <div class="game-bar">
+                        <span>Bet: <span class="g-bet">₹<span id="gBet">0</span></span></span>
+                        <span>Win: <span class="g-win">₹<span id="gWin">0</span></span></span>
+                        <span>You are <span class="g-xo">X</span></span>
+                    </div>
+                    <div class="opp-find" id="gOppFind">Finding opponent<span class="dots"></span></div>
+                    <div class="game-board" id="gBoard">
+                        <div class="g-cell" data-i="0"></div>
+                        <div class="g-cell" data-i="1"></div>
+                        <div class="g-cell" data-i="2"></div>
+                        <div class="g-cell" data-i="3"></div>
+                        <div class="g-cell" data-i="4"></div>
+                        <div class="g-cell" data-i="5"></div>
+                        <div class="g-cell" data-i="6"></div>
+                        <div class="g-cell" data-i="7"></div>
+                        <div class="g-cell" data-i="8"></div>
+                    </div>
+                    <div class="g-result" id="gResult"></div>
+                    <div class="g-actions">
+                        <button class="g-back" onclick="backToBets()">← Bets</button>
+                        <button class="g-again" onclick="playAgain()">↻ Play Again</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: Wallet -->
+            <div class="page" id="pageWallet">
+                <div class="card wallet-big">
+                    <div class="wal-label">Total Balance</div>
+                    <div class="wal-amt">₹<span id="walTotal">0</span></div>
+                    <div class="wal-sub">Deposit + Winnings</div>
+                </div>
+
+                <div class="wallet-cards">
+                    <div class="wal-card">
+                        <div class="w-icon dep">💰</div>
+                        <h4>Deposit Balance</h4>
+                        <div class="w-amt">₹<span id="walDep">0</span></div>
+                        <p>Used for placing bets</p>
+                        <button class="btn-primary" style="padding:10px;font-size:.82rem;" onclick="openDep()">+ Add Money</button>
+                    </div>
+                    <div class="wal-card">
+                        <div class="w-icon win">🏆</div>
+                        <h4>Winning Balance</h4>
+                        <div class="w-amt">₹<span id="walWin">0</span></div>
+                        <p>Withdrawable (min ₹50)</p>
+                        <button class="btn-secondary" onclick="openWith()">Withdraw</button>
+                    </div>
+                </div>
+
+                <div class="wallet-actions" style="margin-top:4px;">
+                    <button class="btn-primary" onclick="openDep()">💰 Deposit</button>
+                    <button class="btn-secondary" onclick="openWith()">🏧 Withdraw</button>
+                </div>
+            </div>
+
+            <!-- PAGE: Transactions -->
+            <div class="page" id="pageTransactions">
+                <div class="txn-summary">
+                    <div class="txn-stat credit"><div class="ts-val" id="tsCredit">₹0</div><div class="ts-lbl">Total Deposits</div></div>
+                    <div class="txn-stat debit"><div class="ts-val" id="tsDebit">₹0</div><div class="ts-lbl">Total Spent</div></div>
+                </div>
+                <div class="card" style="padding:12px 16px;">
+                    <div class="section-title" style="margin-bottom:8px;">📋 <span>History</span></div>
+                    <div class="txn-list" id="txnList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAV -->
+        <div class="bottom-nav" id="bottomNav" style="display:none;">
+            <button class="nav-item" data-page="wallet" onclick="switchTab('wallet')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5Z"/><path d="M3 9H21"/><path d="M15 13H18"/></svg>
+                <span>Wallet</span>
+            </button>
+            <button class="nav-item active" data-page="prediction" onclick="switchTab('prediction')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7L12 12L22 7L12 2Z"/><path d="M2 17L12 22L22 17"/><path d="M2 12L12 17L22 12"/></svg>
+                <span>Prediction</span>
+            </button>
+            <button class="nav-item" data-page="transactions" onclick="switchTab('transactions')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Activity</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="profile-overlay" id="profileOverlay" onclick="closeProfile()"></div>
+    <div class="profile-panel" id="profilePanel">
+        <div class="pp-head">
+            <div class="pp-av" id="ppAv">U</div>
+            <div class="pp-info">
+                <div class="pp-name" id="ppName">User</div>
+                <div class="pp-phone" id="ppPhone">+91 0000000000</div>
+            </div>
+        </div>
+        <div class="pp-ref">🏷️ Referral: <strong id="ppRef">None</strong></div>
+        <div class="pp-stats">
+            <div class="pp-stat"><div class="pp-sval" id="ppDep">₹0</div><div class="pp-slbl">Deposits</div></div>
+            <div class="pp-stat"><div class="pp-sval" id="ppWin">₹0</div><div class="pp-slbl">Winnings</div></div>
+        </div>
+        <div class="pp-txns">
+            <div class="pp-th">Recent Activity</div>
+            <div id="ppTxnList"></div>
+            <div class="pp-more" onclick="switchTab('transactions');closeProfile()">View all &rarr;</div>
+        </div>
+        <div class="pp-foot">
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- DEPOSIT MODAL -->
+    <div class="modal" id="depModal">
+        <div class="modal-in">
+            <h3>💰 Add Money</h3>
+            <p class="m-desc">Choose amount — pay via UPI, Card, NetBanking or Wallet</p>
+            <div class="dopts">
+                <div class="dopt" onclick="depositRzp(50)">₹50</div>
+                <div class="dopt" onclick="depositRzp(100)">₹100</div>
+                <div class="dopt" onclick="depositRzp(200)">₹200</div>
+                <div class="dopt" onclick="depositRzp(500)">₹500</div>
+            </div>
+            <div style="text-align:center;margin-top:6px;">
+                <span style="font-size:.6rem;opacity:.4;">🔒 Powered by <strong>Razorpay</strong></span>
+            </div>
+            <button class="btn-close" onclick="closeDep()">Close</button>
+        </div>
+    </div>
+
+    <!-- WITHDRAW MODAL -->
+    <div class="modal" id="withModal">
+        <div class="modal-in">
+            <h3>🏧 Withdraw</h3>
+            <p class="m-desc">Minimum withdrawal: ₹50. Processed via support within 24h.</p>
+            <div style="margin:16px 0;text-align:center;">
+                <button class="btn-primary" style="width:100%;" onclick="contactSupport()">📩 Contact Support</button>
+            </div>
+            <button class="btn-close" onclick="closeWith()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // ─── Particles ───
+        (function(){
+            const c = document.getElementById('bgCanvas'), ctx = c.getContext('2d');
+            let W, H, pts = [];
+            function resize(){ W=c.width=innerWidth; H=c.height=innerHeight; }
+            resize(); addEventListener('resize', resize);
+            class P {
+                constructor(){ this.reset(); }
+                reset(){ this.x=Math.random()*W; this.y=Math.random()*H; this.vx=(Math.random()-.5)*.3; this.vy=(Math.random()-.5)*.3; this.r=Math.random()*2+1; this.a=Math.random()*.35+.05; }
+                update(){ this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>W||this.y<0||this.y>H) this.reset(); }
+                draw(){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=`rgba(255,0,255,${this.a})`; ctx.fill(); }
+            }
+            for(let i=0;i<70;i++) pts.push(new P());
+            function lines(){
+                for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+                    const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, dist=Math.sqrt(dx*dx+dy*dy);
+                    if(dist<150){ ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.strokeStyle=`rgba(0,255,255,${(1-dist/150)*.1})`; ctx.lineWidth=.5; ctx.stroke(); }
+                }
+            }
+            function loop(){ ctx.clearRect(0,0,W,H); pts.forEach(p=>{p.update();p.draw()}); lines(); requestAnimationFrame(loop); }
+            loop();
+        })();
+
+        // ─── Toast ───
+        function toast(msg, type='info'){
+            const box = document.getElementById('toastBox');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.textContent = msg;
+            box.appendChild(el);
+            setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 2600);
+        }
+
+        // ─── Sound ───
+        let actx = null;
+        function beep(f=520,d=100,t='sine'){
+            try{
+                if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+                const o = actx.createOscillator(), g = actx.createGain();
+                o.type=t; o.frequency.value=f;
+                g.gain.setValueAtTime(.12, actx.currentTime);
+                g.gain.exponentialRampToValueAtTime(.001, actx.currentTime+d/1000);
+                o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+d/1000);
+            }catch(_){}
+        }
+        function sWin(){ beep(660,120); setTimeout(()=>beep(880,180),130); }
+        function sLose(){ beep(280,250,'sawtooth'); }
+        function sClick(){ beep(440,50); }
+        function sDraw(){ beep(500,100); }
+
+        // ─── State ───
+        let user = null;
+        let users = {};
+        let bet = 0, winPot = 0;
+        let brd = ['','','','','','','','',''];
+        let curP = 'X', over = false, active = false, finding = false;
+        let dbrd = ['','','','','','','','',''];
+        let dcur = 'X', dover = false, dactive = true, dfinding = false;
+        let registering = false, loggingIn = false;
+
+        const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+        // ─── Safe storage ───
+        function loadUsers(){
+            try {
+                const raw = localStorage.getItem('nikkUsers');
+                if(!raw) return {};
+                const parsed = JSON.parse(raw);
+                if(typeof parsed !== 'object' || parsed === null) return {};
+                return parsed;
+            } catch(e){
+                console.warn('Corrupt localStorage — resetting users');
+                localStorage.removeItem('nikkUsers');
+                localStorage.removeItem('nikkSess');
+                return {};
+            }
+        }
+        users = loadUsers();
+
+        function saveUsers(){
+            try {
+                localStorage.setItem('nikkUsers', JSON.stringify(users));
+            } catch(e){
+                console.warn('localStorage full — could not save');
+                toast('Storage full! Some data may not persist.','err');
+            }
+        }
+
+        const USER_FIELDS = ['name','phone','password','depositBalance','winningBalance','gamesPlayed','consecutiveLosses','lastWinGame','referral','txns'];
+        const USER_DEFAULTS = {depositBalance:0,winningBalance:0,gamesPlayed:0,consecutiveLosses:0,lastWinGame:0,referral:'',txns:[]};
+
+        function migrateUser(u){
+            if(!u||typeof u!=='object') return null;
+            for(const k in USER_DEFAULTS){
+                if(u[k]===undefined) u[k]=USER_DEFAULTS[k];
+            }
+            if(!Array.isArray(u.txns)) u.txns=[];
+            if(typeof u.name!=='string') u.name='User';
+            if(typeof u.phone!=='string') u.phone='';
+            if(typeof u.password!=='string') u.password='';
+            if(typeof u.depositBalance!=='number'||isNaN(u.depositBalance)) u.depositBalance=0;
+            if(typeof u.winningBalance!=='number'||isNaN(u.winningBalance)) u.winningBalance=0;
+            if(typeof u.gamesPlayed!=='number'||isNaN(u.gamesPlayed)) u.gamesPlayed=0;
+            if(typeof u.consecutiveLosses!=='number'||isNaN(u.consecutiveLosses)) u.consecutiveLosses=0;
+            if(typeof u.lastWinGame!=='number'||isNaN(u.lastWinGame)) u.lastWinGame=0;
+            return u;
+        }
+
+        function sanitize(str, maxLen=100){
+            if(typeof str!=='string') return '';
+            return String(str).replace(/<[^>]*>/g,'').trim().slice(0,maxLen);
+        }
+
+        // ─── DOM ───
+        const $ = id => document.getElementById(id);
+        const authContainer = $('authContainer');
+        const demoContainer = $('demoContainer');
+        const appContainer = $('appContainer');
+        const topBar = $('topBar');
+        const bottomNav = $('bottomNav');
+
+        // ─── Tab switching ───
+        function switchTab(tab){
+            document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+            const pageMap = {wallet:'pageWallet',prediction:'pagePrediction',transactions:'pageTransactions'};
+            const page = $(pageMap[tab]);
+            if(page) page.classList.add('active');
+            const nav = document.querySelector(`.nav-item[data-page="${tab}"]`);
+            if(nav) nav.classList.add('active');
+            updateUI();
+        }
+
+        // ─── Avatar menu ───
+        function toggleProfile(){
+            const panel = $('profilePanel');
+            const overlay = $('profileOverlay');
+            if(panel.classList.contains('show')){
+                panel.classList.remove('show');
+                overlay.classList.remove('show');
+                return;
+            }
+            renderProfilePanel();
+            panel.classList.add('show');
+            overlay.classList.add('show');
+        }
+        function closeProfile(){
+            $('profilePanel').classList.remove('show');
+            $('profileOverlay').classList.remove('show');
+        }
+        document.addEventListener('click', e=>{
+            if(!e.target.closest('.profile-panel') && !e.target.closest('.top-avatar')) closeProfile();
+        });
+
+        function renderProfilePanel(){
+            if(!user) return;
+            const init = (user.name||'U').charAt(0).toUpperCase();
+            $('ppAv').textContent = init;
+            $('ppName').textContent = user.name||'User';
+            $('ppPhone').textContent = '+91 '+(user.phone||'0000000000');
+            $('ppRef').textContent = user.referral||'None';
+            $('ppDep').textContent = '₹'+(user.depositBalance||0);
+            $('ppWin').textContent = '₹'+(user.winningBalance||0);
+            const txns = (user.txns||[]).slice().reverse().slice(0,5);
+            const list = $('ppTxnList');
+            if(!txns.length){
+                list.innerHTML = '<div style="font-size:.68rem;color:var(--text-dim);padding:4px 0;">No activity</div>';
+            } else {
+                list.innerHTML = txns.map(t=>
+                    '<div class="pp-ti"><span>'+(t.note||'')+'</span><span class="pp-ta '+(t.type==='credit'?'plus':'minus')+'">'+(t.type==='credit'?'+':'-')+'₹'+(t.amt||0)+'</span></div>'
+                ).join('');
+            }
+        }
+
+        // ─── Auth Tabs ───
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', ()=>{
+                document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
+                $(`panel${tab.dataset.tab.charAt(0).toUpperCase()+tab.dataset.tab.slice(1)}`).classList.add('active');
+            });
+        });
+
+        // ─── Demo ───
+        function showDemoGame(){
+            if(user){
+                appContainer.style.display='none';
+                topBar.style.display='none';
+                bottomNav.style.display='none';
+            } else {
+                authContainer.style.display='none';
+            }
+            demoContainer.style.display='block';
+            resetDemo();
+        }
+        function hideDemo(){
+            demoContainer.style.display='none';
+            if(user){
+                topBar.style.display='flex';
+                bottomNav.style.display='flex';
+                appContainer.style.display='block';
+            } else {
+                authContainer.style.display='flex';
+            }
+        }
+        function resetDemo(){
+            dbrd = ['','','','','','','','','']; dcur = 'X'; dover = false; dactive = true; dfinding = false;
+            $('demoRes').textContent = ''; $('demoOppFind').style.display = 'none';
+            document.querySelectorAll('.d-cell').forEach(c=>{
+                c.textContent=''; c.classList.remove('dis','x','o'); c.style.pointerEvents='auto';
+            });
+        }
+
+        function dPickAIMove(){
+            let a=[]; for(let i=0;i<9;i++) if(dbrd[i]==='') a.push(i);
+            if(!a.length) return -1;
+            for(let i of a){ dbrd[i]='O'; if(dWin('O')){dbrd[i]='';return i;} dbrd[i]=''; }
+            for(let i of a){ dbrd[i]='X'; if(dWin('X')){dbrd[i]='';return i;} dbrd[i]=''; }
+            if(dbrd[4]==='') return 4;
+            let c=[0,2,6,8].filter(i=>dbrd[i]===''); if(c.length) return c[Math.floor(Math.random()*c.length)];
+            let e=[1,3,5,7].filter(i=>dbrd[i]===''); if(e.length) return e[Math.floor(Math.random()*e.length)];
+            return a[0];
+        }
+
+        function dApplyMove(i, pl){
+            if(dover||i<0||i>8||dbrd[i]!=='') return;
+            dbrd[i]=pl;
+            const el=document.querySelector(`.d-cell[data-i="${i}"]`);
+            if(!el) return;
+            el.textContent=pl;
+            el.classList.add(pl==='X'?'x':'o');
+            el.style.pointerEvents='none';
+            sClick();
+            if(dWin(pl)){ dover=true; $('demoRes').textContent=pl==='X'?'🎉 You won!':'🤖 AI wins!'; if(pl==='X') sWin(); else sLose(); return; }
+            if(dbrd.every(c=>c!=='')){ dover=true; $('demoRes').textContent='🤝 Draw!'; sDraw(); return; }
+            if(pl==='X'){ dcur='O'; dRunAITurn(); }
+            else{ dcur='X'; dEnableBoard(); }
+        }
+
+        function dWin(p){ return wins.some(w=>w.every(i=>dbrd[i]===p)); }
+
+        function dRunAITurn(){
+            dfinding=true;
+            document.querySelectorAll('.d-cell').forEach(c=>c.classList.add('dis'));
+            $('demoOppFind').style.display='block';
+            setTimeout(()=>{
+                if(dover){ dfinding=false; return; }
+                const mi=dPickAIMove();
+                dfinding=false;
+                $('demoOppFind').style.display='none';
+                if(mi>=0) dApplyMove(mi,'O');
+                else dEnableBoard();
+            }, 500+Math.random()*1000);
+        }
+
+        function dEnableBoard(){
+            document.querySelectorAll('.d-cell').forEach(c=>{
+                if(c.textContent===''){c.style.pointerEvents='auto';c.classList.remove('dis');}
+            });
+        }
+
+        document.getElementById('demoBoard').addEventListener('click', e=>{
+            const el=e.target.closest('.d-cell');
+            if(!el||!dactive||dover||dcur!=='X'||dfinding) return;
+            const i=parseInt(el.dataset.i);
+            if(dbrd[i]!=='') return;
+            dApplyMove(i,'X');
+        });
+
+        // ─── Auth ───
+        function validatePass(p){
+            if(!p||p.length<4) return 'Minimum 4 characters';
+            if(p.length>64) return 'Password too long';
+            return null;
+        }
+
+        function register(){
+            if(registering) return;
+            registering=true;
+            $('loadReg').style.display='block';
+            try {
+                const rawPhone=$('inpRegPhone').value;
+                const name=sanitize($('inpRegName').value, 50);
+                const pass=$('inpRegPass').value;
+                const confirm=$('inpRegConfirm').value;
+                const ref=sanitize($('inpReferral').value, 30);
+
+                ['errRegPhone','errRegName','errRegPass','errRegConfirm'].forEach(id=>$(id).style.display='none');
+
+                let invalid=false;
+                if(!/^\d{10}$/.test(rawPhone)){ $('errRegPhone').style.display='block'; invalid=true; }
+                if(!name){ $('errRegName').style.display='block'; invalid=true; }
+                const passErr=validatePass(pass);
+                if(passErr){ $('errRegPass').textContent=passErr; $('errRegPass').style.display='block'; invalid=true; }
+                if(pass!==confirm){ $('errRegConfirm').style.display='block'; invalid=true; }
+
+                if(invalid) return;
+
+                if(users[rawPhone]){
+                    toast('Phone already registered','err');
+                    return;
+                }
+
+                fetch('https://script.google.com/macros/s/AKfycbwLg4kEmb_0PAn4X6BALQ5TygInWSQ2yr-jD3OUW5kz_BYmprJKJHTDeJ6MiJvv81jm/exec?t='+Date.now(),{
+                    method:'POST',mode:'no-cors',
+                    headers:{'Content-Type':'text/plain;charset=utf-8'},
+                    body:JSON.stringify({action:'register',phone:rawPhone,name,password:pass,referral:ref})
+                }).catch(()=>{});
+
+                users[rawPhone]=migrateUser({
+                    name, phone:rawPhone, password:pass,
+                    depositBalance:0, winningBalance:0, gamesPlayed:0,
+                    consecutiveLosses:0, lastWinGame:0, referral:ref, txns:[]
+                });
+                saveUsers();
+                user=users[rawPhone];
+                try {
+                    updateUI(); showApp(); saveSession();
+                } catch(e){
+                    console.error('Post-register UI error:', e);
+                }
+                toast(`🎉 Welcome, ${name}!`,'succ');
+            } finally {
+                $('loadReg').style.display='none';
+                registering=false;
+            }
+        }
+
+        function login(){
+            if(loggingIn) return;
+            loggingIn=true;
+            $('loadLogin').style.display='block';
+            try {
+                const rawPhone=$('inpPhone').value;
+                const pass=$('inpPass').value;
+
+                $('errPhone').style.display='none'; $('errPass').style.display='none';
+
+                let invalid=false;
+                if(!/^\d{10}$/.test(rawPhone)){ $('errPhone').style.display='block'; invalid=true; }
+                if(!pass){ $('errPass').style.display='block'; invalid=true; }
+
+                if(invalid) return;
+
+                fetch('https://script.google.com/macros/s/AKfycbwLg4kEmb_0PAn4X6BALQ5TygInWSQ2yr-jD3OUW5kz_BYmprJKJHTDeJ6MiJvv81jm/exec?t='+Date.now(),{
+                    method:'POST',mode:'no-cors',
+                    headers:{'Content-Type':'text/plain;charset=utf-8'},
+                    body:JSON.stringify({action:'login',phone:rawPhone,password:pass})
+                }).catch(()=>{});
+
+                if(users[rawPhone] && users[rawPhone].password===pass){
+                    user=migrateUser(users[rawPhone]);
+                    users[rawPhone]=user;
+                    saveUsers();
+                    try {
+                        updateUI(); showApp(); saveSession();
+                    } catch(e){
+                        console.error('Post-login UI error:', e);
+                    }
+                    toast(`👋 Welcome back, ${user.name}!`,'succ');
+                } else {
+                    toast('Invalid phone or password','err');
+                }
+            } finally {
+                $('loadLogin').style.display='none';
+                loggingIn=false;
+            }
+        }
+
+        function saveSession(){
+            try {
+                if(user) localStorage.setItem('nikkSess', user.phone);
+            } catch(_){}
+        }
+
+        function loadSession(){
+            try {
+                const p=localStorage.getItem('nikkSess');
+                if(p && users[p]){
+                    user=migrateUser(users[p]);
+                    users[p]=user;
+                    saveUsers();
+                    updateUI(); showApp();
+                }
+            } catch(_){}
+        }
+
+        function logout(){
+            user=null;
+            try { localStorage.removeItem('nikkSess'); } catch(_){}
+            hideApp();
+            authContainer.style.display='flex';
+            document.querySelector('.auth-tab[data-tab="login"]').click();
+            $('inpPhone').value=''; $('inpPass').value='';
+            $('inpRegPhone').value=''; $('inpRegName').value='';
+            $('inpRegPass').value=''; $('inpRegConfirm').value='';
+            $('inpReferral').value='';
+            ['errPhone','errPass','errRegPhone','errRegName','errRegPass','errRegConfirm'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
+            toast('Logged out','info');
+        }
+
+        function showApp(){
+            authContainer.style.display='none';
+            demoContainer.style.display='none';
+            topBar.style.display='flex';
+            bottomNav.style.display='flex';
+            appContainer.style.display='block';
+            switchTab('prediction');
+            updateUI();
+        }
+
+        function hideApp(){
+            topBar.style.display='none';
+            bottomNav.style.display='none';
+            appContainer.style.display='none';
+        }
+
+        function updateUI(){
+            if(!user) return;
+            user=migrateUser(user);
+            const total = (user.depositBalance||0) + (user.winningBalance||0);
+            $('topBalance').textContent = total.toLocaleString();
+
+            const init = (user.name||'U').charAt(0).toUpperCase();
+            $('avatarLetter').textContent = init;
+
+            if($('profilePanel').classList.contains('show')) renderProfilePanel();
+
+            // Prediction stats
+            $('psGames').textContent = user.gamesPlayed||0;
+            const winsCount = user.txns ? user.txns.filter(t=>t.note&&t.note.includes('won')).length : 0;
+            $('psWins').textContent = winsCount;
+            $('psStreak').textContent = Math.max(0, user.consecutiveLosses||0);
+
+            // Wallet
+            $('walDep').textContent = user.depositBalance||0;
+            $('walWin').textContent = user.winningBalance||0;
+            $('walTotal').textContent = total.toLocaleString();
+
+            // Transactions summary
+            const txns = user.txns||[];
+            const credits = txns.filter(t=>t.type==='credit').reduce((s,t)=>s+t.amt,0);
+            const debits = txns.filter(t=>t.type==='debit').reduce((s,t)=>s+t.amt,0);
+            $('tsCredit').textContent = `₹${credits.toLocaleString()}`;
+            $('tsDebit').textContent = `₹${debits.toLocaleString()}`;
+
+            renderTxns();
+        }
+
+        // ─── Wallet ───
+        function openDep(){ $('depModal').classList.add('show'); }
+        function closeDep(){ $('depModal').classList.remove('show'); }
+        function openWith(){
+            if(!user) return;
+            if(user.winningBalance<50){ toast('Min withdrawal is ₹50','err'); return; }
+            $('withModal').classList.add('show');
+        }
+        function closeWith(){ $('withModal').classList.remove('show'); }
+        function contactSupport(){ window.open('https://t.me/dreams_404','_blank'); closeWith(); toast('📩 Contact support on Telegram','info'); }
+
+        // ═══════════════════════════════════════════════════
+        //  RAZORPAY SETUP — Only 2 things to change here
+        // ═══════════════════════════════════════════════════
+        //  1. Sign up at https://razorpay.com
+        //  2. Get keys at https://dashboard.razorpay.com/app/keys
+        //  3. Paste your Key ID below
+        //  4. Deploy the backend (razorpay-backend/) with:
+        //       cd razorpay-backend
+        //       npm install
+        //       npx wrangler deploy
+        //       npx wrangler secret put RZP_KEY_ID
+        //       npx wrangler secret put RZP_KEY_SECRET
+        //  5. Copy the worker URL and paste it below
+        // ═══════════════════════════════════════════════════
+        const RZP_KEY_ID = 'PASTE_YOUR_RAZORPAY_KEY_ID_HERE';
+        const RZP_ORDER_API = 'https://razorpay-order-backend.YOUR_SUBDOMAIN.workers.dev';
+
+        async function depositRzp(amt) {
+            if (!user) { toast('Login first', 'err'); return; }
+            closeDep();
+
+            let orderId;
+            try {
+                const r = await fetch(RZP_ORDER_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: amt * 100, currency: 'INR' })
+                });
+                const o = await r.json();
+                if (o.id) orderId = o.id;
+            } catch (_) {
+                toast('Backend unreachable — set up your worker (see instructions)','err');
+                openDep();
+                return;
+            }
+
+            const opts = {
+                key: RZP_KEY_ID,
+                amount: amt * 100,
+                currency: 'INR',
+                name: 'NIKK XO',
+                description: `Deposit ₹${amt}`,
+                order_id: orderId,
+                prefill: {
+                    name: user.name || '',
+                    contact: user.phone ? '91' + user.phone : '',
+                    email: ''
+                },
+                theme: { color: '#f0b429' },
+                handler: function(res) {
+                    user.depositBalance += amt;
+                    txn('credit', amt, `Deposit via Razorpay (${res.razorpay_payment_id})`);
+                    saveUser(); updateUI();
+                    toast(`✅ ₹${amt} added!`, 'succ');
+                },
+                modal: { ondismiss: () => toast('Payment cancelled','info') }
+            };
+
+            try { (new Razorpay(opts)).open(); }
+            catch(e) { toast('Razorpay failed to load','err'); openDep(); }
+        }
+
+        function txn(type,amt,note){
+            if(!user.txns) user.txns=[];
+            user.txns.push({type,amt,note,date:new Date().toLocaleString()});
+            saveUser();
+        }
+
+        function renderTxns(){
+            const list = $('txnList');
+            if(!user||!user.txns||!user.txns.length){
+                list.innerHTML = `<div class="txn-empty">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    No transactions yet
+                </div>`;
+                return;
+            }
+            list.innerHTML = user.txns.slice().reverse().map(t=>`
+                <div class="txn-item ${t.type}">
+                    <div class="txn-info">
+                        <div class="txn-note">${t.note}</div>
+                        <div class="txn-date">${t.date}</div>
+                    </div>
+                    <div class="txn-amt ${t.type==='credit'?'plus':'minus'}">${t.type==='credit'?'+':'-'}₹${t.amt}</div>
+                </div>
+            `).join('');
+        }
+
+        function enableEmptyCells(sel){
+            document.querySelectorAll(sel).forEach(c=>{
+                if(c.textContent===''){c.style.pointerEvents='auto';c.classList.remove('dis');}
+            });
+        }
+
+        function disableAllCells(sel){
+            document.querySelectorAll(sel).forEach(c=>c.classList.add('dis'));
+        }
+
+        function lockCell(el){
+            if(el){ el.style.pointerEvents='none'; }
+        }
+
+        // ─── Betting ───
+        function placeBet(betAmt, winAmt){
+            if(!user){ toast('Login first','err'); return; }
+            if(user.depositBalance<betAmt){ toast('Insufficient balance! Deposit more.','err'); return; }
+            bet=betAmt; winPot=winAmt;
+            user.depositBalance-=betAmt;
+            txn('debit',betAmt,`Bet placed (₹${betAmt})`);
+            saveUser(); updateUI();
+            $('gBet').textContent=bet; $('gWin').textContent=winPot;
+            $('bets').style.display='none';
+            $('gameArea').style.display='block';
+            active=true; resetBoard();
+        }
+
+        function backToBets(){
+            if(!over&&bet>0){ user.depositBalance+=bet; txn('credit',bet,'Refund (back to bets)'); saveUser(); updateUI(); }
+            active=false; over=false; finding=false;
+            $('gameArea').style.display='none';
+            $('bets').style.display='block';
+            resetBoard();
+        }
+
+        function playAgain(){
+            if(user.depositBalance<bet){ toast('Insufficient balance!','err'); backToBets(); return; }
+            user.depositBalance-=bet; txn('debit',bet,`Bet placed (again ₹${bet})`); saveUser(); updateUI();
+            resetBoard();
+        }
+
+        function resetBoard(){
+            brd=['','','','','','','','','']; curP='X'; over=false; finding=false;
+            $('gResult').innerHTML=''; $('gOppFind').style.display='none';
+            document.querySelectorAll('.g-cell').forEach(c=>{
+                c.textContent=''; c.classList.remove('dis','x','o','win'); c.style.pointerEvents='auto';
+            });
+            document.querySelectorAll('.confetti-bit').forEach(c=>c.remove());
+        }
+
+        // ─── Game ───
+        document.getElementById('gBoard').addEventListener('click', e=>{
+            const el=e.target.closest('.g-cell');
+            if(!el||!active||over||curP!=='X'||finding) return;
+            const i=parseInt(el.dataset.i);
+            if(brd[i]!=='') return;
+            doPlayerMove(i);
+        });
+
+        function doPlayerMove(i){
+            applyMove(i,'X');
+            if(!over){
+                curP='O';
+                startAITurn();
+            }
+        }
+
+        function startAITurn(){
+            finding=true;
+            disableAllCells('.g-cell');
+            $('gOppFind').style.display='block';
+            const delay=400+Math.random()*800;
+            setTimeout(()=>{
+                try {
+                    if(over){ finding=false; return; }
+                    finding=false;
+                    $('gOppFind').style.display='none';
+                    document.querySelectorAll('.g-cell').forEach(c=>c.classList.remove('dis'));
+                    document.querySelectorAll('.g-cell').forEach(c=>{
+                        if(c.textContent!=='') c.style.pointerEvents='none';
+                    });
+                    const moved = doAIMove();
+                    if(!moved){
+                        curP='X';
+                        enableEmptyCells('.g-cell');
+                    } else if(!over) {
+                        enableEmptyCells('.g-cell');
+                    }
+                } catch(e){
+                    console.error('AI error:', e);
+                    finding=false;
+                    $('gOppFind').style.display='none';
+                    curP='X';
+                    enableEmptyCells('.g-cell');
+                    toast('Game error — try again','err');
+                }
+            }, delay);
+        }
+
+        function applyMove(i, pl){
+            if(over||brd[i]!=='') return;
+            brd[i]=pl;
+            const el=document.querySelector(`.g-cell[data-i="${i}"]`);
+            if(!el) return;
+            el.textContent=pl;
+            el.classList.add(pl==='X'?'x':'o');
+            el.style.pointerEvents='none';
+            sClick();
+
+            if(checkWin(pl)){
+                over=true; user.gamesPlayed++;
+                highlightWin(pl);
+                if(pl==='X'){
+                    user.winningBalance+=winPot; user.consecutiveLosses=0; user.lastWinGame=user.gamesPlayed;
+                    txn('credit',winPot,`Game won (₹${winPot})`);
+                    saveUser(); updateUI(); sWin(); confetti();
+                    $('gResult').innerHTML='<div class="win-badge">WINNER</div><br>' + `🎉 You won ₹${winPot}! <a href="https://t.me/dreams_404" target="_blank">Contact Nikk</a>`;
+                } else {
+                    user.consecutiveLosses++;
+                    txn('debit',bet,`Game lost (₹${bet})`);
+                    saveUser(); updateUI(); sLose();
+                    $('gResult').textContent='😵 Nikk wins! Try again.';
+                }
+                return;
+            }
+            if(brd.every(c=>c!=='')){
+                over=true; user.gamesPlayed++; saveUser(); updateUI(); sDraw();
+                const drawRefund = Math.floor(bet * 0.9); user.depositBalance+=drawRefund; txn('credit',drawRefund,`Draw — 90% refund (₹${drawRefund})`); saveUser(); updateUI();
+                $('gResult').textContent=`🤝 Draw! 90% refunded (₹${drawRefund} of ₹${bet})`;
+                return;
+            }
+            curP=(pl==='X'?'O':'X');
+        }
+
+        function checkWin(p){
+            return wins.some(w=>w.every(i=>brd[i]===p));
+        }
+
+        function highlightWin(p){
+            wins.forEach(w=>{
+                if(w.every(i=>brd[i]===p)) w.forEach(i=>{
+                    const el=document.querySelector(`.g-cell[data-i="${i}"]`);
+                    if(el) el.classList.add('win');
+                });
+            });
+        }
+
+        function doAIMove(){
+            if(over) return false;
+            const empty=[];
+            for(let i=0;i<9;i++) if(brd[i]==='') empty.push(i);
+            if(!empty.length) return false;
+
+            const force=(user.consecutiveLosses>=4&&user.gamesPlayed>=4);
+            let moveIdx;
+
+            if(force){
+                let loseIdx=null;
+                for(let i of empty){
+                    brd[i]='X';
+                    if(checkWin('X')){loseIdx=i;brd[i]='';break;}
+                    brd[i]='';
+                }
+                if(loseIdx!==null){
+                    const safe=empty.filter(i=>{
+                        if(i===loseIdx) return true;
+                        brd[i]='O'; const bad=checkWin('X'); brd[i]='';
+                        return !bad;
+                    });
+                    moveIdx=safe.length?safe[Math.floor(Math.random()*safe.length)]:empty[Math.floor(Math.random()*empty.length)];
+                } else {
+                    moveIdx=empty[Math.floor(Math.random()*empty.length)];
+                }
+            } else {
+                let best=-Infinity;
+                for(let i of empty){
+                    brd[i]='O';
+                    const s=minimax(brd,0,false);
+                    brd[i]='';
+                    if(s>best){best=s;moveIdx=i;}
+                }
+            }
+
+            if(moveIdx===undefined||moveIdx===null) return false;
+            applyMove(moveIdx,'O');
+            if(!over) enableEmptyCells('.g-cell');
+            return true;
+        }
+
+        function minimax(b,d,isMax){
+            if(checkWin('O')) return 10-d;
+            if(checkWin('X')) return d-10;
+            let full=true;
+            for(let i=0;i<9;i++) if(b[i]===''){full=false;break;}
+            if(full) return 0;
+            let best=isMax?-Infinity:Infinity;
+            for(let i=0;i<9;i++){
+                if(b[i]===''){
+                    b[i]=isMax?'O':'X';
+                    const s=minimax(b,d+1,!isMax);
+                    b[i]='';
+                    best=isMax?Math.max(s,best):Math.min(s,best);
+                }
+            }
+            return best;
+        }
+
+        function confetti(){
+            const cols=['#f0b429','#f59e0b','#ff00f7','#00f0ff','#10b981','#ef4444','#ffffff'];
+            for(let i=0;i<60;i++) setTimeout(()=>{
+                const el=document.createElement('div'); el.className='confetti-bit';
+                el.style.left=Math.random()*100+'vw';
+                el.style.background=cols[Math.floor(Math.random()*cols.length)];
+                el.style.setProperty('--d',(1.5+Math.random()*2.5)+'s');
+                el.style.width=(4+Math.random()*8)+'px'; el.style.height=(4+Math.random()*8)+'px';
+                document.body.appendChild(el); setTimeout(()=>el.remove(),4000);
+            },i*20);
+            const flash=document.createElement('div'); flash.className='win-flash';
+            document.body.appendChild(flash); setTimeout(()=>flash.remove(),800);
+        }
+
+        // ─── Input masks ───
+        document.getElementById('inpPhone').addEventListener('input',function(){ this.value=this.value.replace(/\D/g,'').slice(0,10); if(this.value.length===10) $('errPhone').style.display='none'; });
+        document.getElementById('inpRegPhone').addEventListener('input',function(){ this.value=this.value.replace(/\D/g,'').slice(0,10); if(this.value.length===10) $('errRegPhone').style.display='none'; });
+
+        function saveUser(){
+            if(!user) return;
+            user=migrateUser(user);
+            users[user.phone]=user;
+            saveUsers();
+        }
+
+        // ─── Init ───
+        loadSession();
+        if(!user){
+            authContainer.style.display='flex';
+        }
+    </script>
+</body>
+</html>
