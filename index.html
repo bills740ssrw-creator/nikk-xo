@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="razorpay-key-id" content="rzp_test_TVrmMRULoSLk9A">
     <title>NIKK XO — Prediction Game</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1024,21 +1025,14 @@
         function contactSupport(){ window.open('https://t.me/dreams_404','_blank'); closeWith(); toast('📩 Contact support on Telegram','info'); }
 
         // ═══════════════════════════════════════════════════
-        //  RAZORPAY SETUP — Only 2 things to change here
+        //  RAZORPAY SETUP — Vercel Serverless Functions
         // ═══════════════════════════════════════════════════
-        //  1. Sign up at https://razorpay.com
-        //  2. Get keys at https://dashboard.razorpay.com/app/keys
-        //  3. Paste your Key ID below
-        //  4. Deploy the backend (razorpay-backend/) with:
-        //       cd razorpay-backend
-        //       npm install
-        //       npx wrangler deploy
-        //       npx wrangler secret put RZP_KEY_ID
-        //       npx wrangler secret put RZP_KEY_SECRET
-        //  5. Copy the worker URL and paste it below
+        //  Key ID is injected via meta tag at build time (see index.html head)
+        //  API endpoints: /api/create-order, /api/verify-payment
         // ═══════════════════════════════════════════════════
-        const RZP_KEY_ID = 'PASTE_YOUR_RAZORPAY_KEY_ID_HERE';
-        const RZP_ORDER_API = 'https://razorpay-order-backend.YOUR_SUBDOMAIN.workers.dev';
+        const RZP_KEY_ID = document.querySelector('meta[name="razorpay-key-id"]')?.content || 'rzp_test_TVrmMRULoSLk9A';
+        const RZP_CREATE_ORDER_API = '/api/create-order';
+        const RZP_VERIFY_PAYMENT_API = '/api/verify-payment';
 
         async function depositRzp(amt) {
             if (!user) { toast('Login first', 'err'); return; }
@@ -1046,15 +1040,17 @@
 
             let orderId;
             try {
-                const r = await fetch(RZP_ORDER_API, {
+                const r = await fetch(RZP_CREATE_ORDER_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: amt * 100, currency: 'INR' })
                 });
                 const o = await r.json();
-                if (o.id) orderId = o.id;
-            } catch (_) {
-                toast('Backend unreachable — set up your worker (see instructions)','err');
+                if (o.error) throw new Error(o.error);
+                if (o.order_id) orderId = o.order_id;
+            } catch (err) {
+                console.error('Create order error:', err);
+                toast('Failed to create order — try again','err');
                 openDep();
                 return;
             }
@@ -1072,7 +1068,29 @@
                     email: ''
                 },
                 theme: { color: '#f0b429' },
-                handler: function(res) {
+                handler: async function(res) {
+                    // Verify payment signature on backend
+                    try {
+                        const v = await fetch(RZP_VERIFY_PAYMENT_API, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: res.razorpay_order_id,
+                                razorpay_payment_id: res.razorpay_payment_id,
+                                razorpay_signature: res.razorpay_signature
+                            })
+                        });
+                        const verify = await v.json();
+                        if (!verify.verified) {
+                            toast('Payment verification failed','err');
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Verify error:', e);
+                        toast('Payment verification error','err');
+                        return;
+                    }
+
                     user.depositBalance += amt;
                     txn('credit', amt, `Deposit via Razorpay (${res.razorpay_payment_id})`);
                     saveUser(); updateUI();
